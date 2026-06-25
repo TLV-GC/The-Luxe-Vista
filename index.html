@@ -1556,51 +1556,40 @@ function submitEmail(){
 
 // ── Contact form — In-Site Message (saves to admin panel + fires Gmail via EmailJS) ──
 const siteMessages = [];
+  <script type="text/javascript"
+  src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js">
+</script>
+<script>
+  emailjs.init("TLV");
+</script>
 function submitSite(){
   const fn=document.getElementById('f_fname').value.trim();
   const ph=document.getElementById('f_phone').value.trim();
   const pr=document.getElementById('f_product').value;
-  if(!fn||!ph||!pr){showToast('Please fill in your name, phone, and product interest.');return;}
+  if(!fn||!ph||!pr){showToast('Please fill in name, phone, product.');return;}
   const ln=document.getElementById('f_lname').value.trim();
   const oc=document.getElementById('f_occasion').value;
   const mg=document.getElementById('f_msg').value.trim();
   const entry={
-    id:Date.now(),
-    name:`${fn} ${ln}`.trim(),
-    phone:ph,
-    product:pr,
-    occasion:oc||'—',
-    details:mg||'—',
-    status:'unread',
+    id:Date.now(), name:`${fn} ${ln}`.trim(), phone:ph, product:pr,
+    occasion:oc||'—', details:mg||'—', status:'unread',
     time:new Date().toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'})
   };
-  // ── Save to localStorage for admin.html panel ──
+  // Save to localStorage for admin panel
   try{
     const saved=JSON.parse(localStorage.getItem('luxevista_msgs')||'[]');
     saved.push(entry);
     localStorage.setItem('luxevista_msgs',JSON.stringify(saved));
-    siteMessages.push(entry);
   }catch(e){}
-  // ── Send Gmail notification via EmailJS ──
-  // Configure this in admin.html > Gmail Setup tab, then paste credentials here
-  const ejsCfg=_getEJSConfig();
-  if(ejsCfg && typeof emailjs!=='undefined'){
-    emailjs.send(ejsCfg.service, ejsCfg.template, {
-      from_name: entry.name,
-      phone: ph,
-      product: pr,
-      occasion: oc||'Not specified',
-      message: mg||'No additional details'
-    }).then(()=>{
-      console.log('📧 Gmail notification sent via EmailJS');
-    }, err=>{
-      console.warn('EmailJS send failed (credentials may need setup):', err);
-    });
-  }
+  // Send email via EmailJS
+  emailjs.send('service_zuk74x3','template_sgh3zqv',{
+    from_name: entry.name, phone: ph, product: pr,
+    occasion: oc||'None', message: mg||'No additional details'
+  }).then(()=>{console.log('Email sent');},err=>{console.warn('Email failed',err);});
   document.getElementById('inquiry-form').style.display='none';
   document.getElementById('form-success').style.display='block';
   document.getElementById('success-msg').textContent='Your message has been received! We will be in touch shortly.';
-  showToast('✅ Message sent! We\'ll be in touch soon.');
+  showToast('✅ Message sent successfully!');
 }
 
 function _getEJSConfig(){
