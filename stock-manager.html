@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>TheLuxeVista — Stock Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300;1,600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1d4ed8;--blue-dark:#1e3a8a;--blue-light:#eff6ff;--blue-pale:#dbeafe;
+  --dark:#0f172a;--charcoal:#1e293b;--silver:#64748b;--silver-lt:#e2e8f0;
+  --green:#16a34a;--green-lt:#f0fdf4;--red:#dc2626;--red-lt:#fef2f2;
+  --amber:#d97706;--amber-lt:#fffbeb;
+  --white:#ffffff;--off-white:#f7f9fd;
+  --sans:'Montserrat',sans-serif;--serif:'Cormorant Garamond',Georgia,serif;
+  --shadow:0 4px 24px rgba(15,23,42,0.08);--shadow-lg:0 12px 48px rgba(15,23,42,0.14);
+  --tr:0.25s ease;
+}
+body{background:var(--off-white);color:var(--dark);font-family:var(--sans);line-height:1.6;min-height:100vh}
+
+/* ── Auth ── */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:var(--dark)}
+.login-box{background:var(--charcoal);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:48px 40px;width:100%;max-width:400px;text-align:center}
+.login-logo{font-size:0.6rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--blue-pale);margin-bottom:8px}
+.login-title{font-size:1.4rem;font-weight:700;color:#fff;margin-bottom:6px}
+.login-sub{font-size:0.72rem;color:rgba(255,255,255,0.4);margin-bottom:32px}
+.login-input{width:100%;background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.12);color:#fff;padding:12px 16px;font-family:var(--sans);font-size:0.82rem;border-radius:4px;outline:none;transition:border var(--tr);margin-bottom:12px}
+.login-input:focus{border-color:var(--blue)}
+.login-btn{width:100%;background:var(--blue);color:#fff;border:none;padding:13px;font-family:var(--sans);font-size:0.7rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;border-radius:4px;transition:background var(--tr)}
+.login-btn:hover{background:var(--blue-dark)}
+.login-error{font-size:0.7rem;color:#f87171;margin-top:10px;display:none}
+
+/* ── Shell ── */
+#shell{display:none;flex-direction:column;min-height:100vh}
+header{background:var(--dark);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.07)}
+.h-logo{font-size:0.55rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--blue-pale);font-weight:700}
+.h-title{font-size:0.7rem;color:rgba(255,255,255,0.5);margin-top:2px}
+.h-logout{font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.4);background:none;border:1px solid rgba(255,255,255,0.15);padding:6px 14px;cursor:pointer;transition:all var(--tr);border-radius:3px;font-family:var(--sans)}
+.h-logout:hover{border-color:var(--blue);color:var(--blue-pale)}
+main{flex:1;padding:32px;max-width:1200px;margin:0 auto;width:100%}
+
+/* ── Stats ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.scard{background:var(--white);border:1px solid var(--silver-lt);border-radius:6px;padding:18px;text-align:center;box-shadow:var(--shadow)}
+.scard-num{font-size:1.7rem;font-weight:800;color:var(--blue);line-height:1}
+.scard-lbl{font-size:0.58rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--silver);margin-top:5px}
+
+/* ── Two-panel layout ── */
+.layout{display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:start}
+.panel{background:var(--white);border:1px solid var(--silver-lt);border-radius:6px;box-shadow:var(--shadow)}
+.panel-head{padding:20px 24px;border-bottom:1px solid var(--silver-lt);display:flex;align-items:center;justify-content:space-between}
+.panel-head-title{font-size:0.72rem;font-weight:700;color:var(--dark);text-transform:uppercase;letter-spacing:0.12em}
+.panel-body{padding:24px}
+
+/* ── Form ── */
+.fgroup{margin-bottom:16px}
+.flabel{display:block;font-size:0.65rem;font-weight:700;color:var(--dark);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px}
+.finput,.fselect,.ftextarea{width:100%;border:1.5px solid var(--silver-lt);background:var(--off-white);padding:10px 14px;font-family:var(--sans);font-size:0.78rem;border-radius:4px;outline:none;transition:border var(--tr);color:var(--dark)}
+.finput:focus,.fselect:focus,.ftextarea:focus{border-color:var(--blue);background:var(--white)}
+.ftextarea{resize:vertical;min-height:80px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--silver-lt);margin-top:4px}
+.toggle-label{font-size:0.72rem;font-weight:600;color:var(--dark)}
+.toggle-sub{font-size:0.62rem;color:var(--silver);margin-top:1px}
+.toggle{position:relative;width:42px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.toggle-track{position:absolute;inset:0;background:var(--silver-lt);border-radius:24px;cursor:pointer;transition:background var(--tr)}
+.toggle input:checked+.toggle-track{background:var(--blue)}
+.toggle-track::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform var(--tr);box-shadow:0 1px 4px rgba(0,0,0,0.2)}
+.toggle input:checked+.toggle-track::after{transform:translateX(18px)}
+
+/* Image upload */
+.img-upload-zone{border:2px dashed var(--silver-lt);border-radius:6px;padding:28px;text-align:center;cursor:pointer;transition:border var(--tr);background:var(--off-white)}
+.img-upload-zone:hover{border-color:var(--blue);background:var(--blue-light)}
+.img-upload-zone input{display:none}
+.img-preview{width:100%;height:160px;object-fit:cover;border-radius:4px;margin-top:12px;display:none}
+.img-upload-icon{font-size:2rem;opacity:0.4;margin-bottom:6px}
+.img-upload-text{font-size:0.7rem;color:var(--silver)}
+
+/* Colour swatches editor */
+.swatch-editor{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.swatch-item{display:flex;align-items:center;gap:6px;background:var(--off-white);border:1px solid var(--silver-lt);border-radius:4px;padding:4px 10px}
+.swatch-dot{width:16px;height:16px;border-radius:50%;border:1px solid rgba(0,0,0,0.1);cursor:pointer;flex-shrink:0}
+.swatch-name{font-size:0.68rem;color:var(--dark)}
+.swatch-del{font-size:0.7rem;color:var(--red);cursor:pointer;padding:0 2px}
+.add-swatch-row{display:flex;gap:8px;margin-top:10px}
+.swatch-color-pick{width:40px;height:36px;border:1.5px solid var(--silver-lt);border-radius:4px;cursor:pointer;padding:2px}
+.swatch-name-in{flex:1}
+
+/* Sizes editor */
+.sizes-grid{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.size-tag{background:var(--blue-light);color:var(--blue);font-size:0.65rem;font-weight:700;padding:5px 12px;border-radius:3px;display:flex;align-items:center;gap:4px}
+.size-tag span{cursor:pointer;color:var(--red)}
+.add-size-row{display:flex;gap:8px;margin-top:10px}
+.size-add-in{flex:1}
+
+/* Submit button */
+.submit-btn{width:100%;background:var(--blue);color:#fff;border:none;padding:13px;font-family:var(--sans);font-size:0.68rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;cursor:pointer;border-radius:4px;transition:background var(--tr);margin-top:8px}
+.submit-btn:hover{background:var(--blue-dark)}
+.submit-btn:disabled{opacity:0.5;cursor:not-allowed}
+
+/* ── Product Grid ── */
+.grid-toolbar{padding:16px 24px;border-bottom:1px solid var(--silver-lt);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.search-in{flex:1;min-width:140px;border:1.5px solid var(--silver-lt);background:var(--off-white);padding:8px 12px;font-family:var(--sans);font-size:0.75rem;border-radius:4px;outline:none}
+.search-in:focus{border-color:var(--blue)}
+.filter-btn{font-size:0.58rem;letter-spacing:0.12em;text-transform:uppercase;font-family:var(--sans);font-weight:600;padding:7px 14px;border:1.5px solid var(--silver-lt);background:transparent;color:var(--silver);cursor:pointer;border-radius:3px;transition:all var(--tr)}
+.filter-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.filter-btn:hover:not(.active){border-color:var(--blue);color:var(--blue)}
+.product-grid{padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.prod-card{border:1px solid var(--silver-lt);border-radius:6px;overflow:hidden;position:relative;transition:box-shadow var(--tr)}
+.prod-card:hover{box-shadow:var(--shadow-lg)}
+.prod-card-img{width:100%;height:150px;object-fit:cover;background:var(--off-white);display:flex;align-items:center;justify-content:center;font-size:2rem}
+.prod-card-img img{width:100%;height:100%;object-fit:cover}
+.prod-badges{position:absolute;top:8px;left:8px;display:flex;flex-direction:column;gap:4px}
+.badge-new{background:#0ea5e9;color:#fff;font-size:0.52rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;padding:3px 8px;border-radius:20px}
+.badge-sold{background:var(--red);color:#fff;font-size:0.52rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;padding:3px 8px;border-radius:20px}
+.prod-card-body{padding:14px}
+.prod-card-cat{font-size:0.55rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--blue);font-weight:600}
+.prod-card-name{font-size:0.82rem;font-weight:700;color:var(--dark);margin:3px 0}
+.prod-card-price{font-size:0.78rem;color:var(--silver);margin-bottom:12px}
+.prod-card-actions{display:flex;gap:6px;flex-wrap:wrap}
+.pca{font-size:0.55rem;letter-spacing:0.1em;text-transform:uppercase;font-family:var(--sans);font-weight:600;padding:5px 10px;border:1.5px solid var(--silver-lt);background:transparent;color:var(--silver);cursor:pointer;border-radius:3px;transition:all var(--tr)}
+.pca:hover{border-color:var(--blue);color:var(--blue)}
+.pca.sold-toggle.is-sold{border-color:var(--green);color:var(--green)}
+.pca.sold-toggle.is-sold:hover{background:var(--green);color:#fff}
+.pca.sold-toggle:not(.is-sold):hover{border-color:var(--red);color:var(--red)}
+.pca.del:hover{border-color:var(--red);color:var(--red)}
+.pca.new-toggle.is-new{border-color:#0ea5e9;color:#0ea5e9}
+
+.empty-grid{padding:48px;text-align:center;color:var(--silver)}
+.empty-icon{font-size:3rem;opacity:0.3;margin-bottom:12px}
+
+.toast{position:fixed;bottom:24px;right:24px;background:var(--dark);border-left:3px solid var(--blue);color:#fff;padding:12px 20px;font-size:0.72rem;z-index:9999;transform:translateY(60px);opacity:0;transition:all 0.35s ease;border-radius:4px;max-width:300px}
+.toast.show{transform:translateY(0);opacity:1}
+
+@media(max-width:960px){.layout{grid-template-columns:1fr}}
+@media(max-width:680px){.stats-row{grid-template-columns:1fr 1fr};main{padding:16px}}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">TheLuxeVista</div>
+    <div class="login-title">Stock Manager</div>
+    <div class="login-sub">Add new products, manage badges, mark sold out items.</div>
+    <input class="login-input" id="pw-in" type="password" placeholder="Admin password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <button class="login-btn" onclick="doLogin()">Enter Stock Manager</button>
+    <div class="login-error" id="login-err">Incorrect password.</div>
+  </div>
+</div>
+
+<!-- Shell -->
+<div id="shell" style="display:none;flex-direction:column">
+  <header>
+    <div>
+      <div class="h-logo">TheLuxeVista — Stock Manager</div>
+      <div class="h-title">Add products · Manage badges · Mark sold out</div>
+    </div>
+    <button class="h-logout" onclick="doLogout()">Log Out</button>
+  </header>
+  <main>
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="scard"><div class="scard-num" id="st-total">0</div><div class="scard-lbl">Total Products</div></div>
+      <div class="scard"><div class="scard-num" id="st-new">0</div><div class="scard-lbl">New Arrivals</div></div>
+      <div class="scard"><div class="scard-num" id="st-sold">0</div><div class="scard-lbl">Sold Out</div></div>
+      <div class="scard"><div class="scard-num" id="st-avail">0</div><div class="scard-lbl">Available</div></div>
+    </div>
+
+    <div class="layout">
+      <!-- Add Product Panel -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-head-title" id="form-panel-title">Add New Product</div>
+          <button id="cancel-edit-btn" style="display:none;font-size:0.6rem;background:none;border:1px solid var(--silver-lt);padding:5px 12px;cursor:pointer;border-radius:3px;font-family:var(--sans);color:var(--silver)" onclick="cancelEdit()">Cancel Edit</button>
+        </div>
+        <div class="panel-body">
+          <input type="hidden" id="edit-id"/>
+
+          <!-- Image Upload -->
+          <div class="fgroup">
+            <div class="flabel">Product Photo</div>
+            <div class="img-upload-zone" onclick="document.getElementById('img-file').click()" id="upload-zone">
+              <input type="file" id="img-file" accept="image/*" onchange="handleImage(this)"/>
+              <div class="img-upload-icon">📸</div>
+              <div class="img-upload-text">Click to upload photo<br/><span style="font-size:0.62rem">JPG, PNG, WEBP — max 5MB</span></div>
+            </div>
+            <img id="img-preview" class="img-preview"/>
+            <input type="hidden" id="f-image"/>
+          </div>
+
+          <div class="fgroup">
+            <div class="flabel">Product Name *</div>
+            <input class="finput" id="f-name" placeholder="e.g. Classic Oxford Shoe"/>
+          </div>
+          <div class="fgroup">
+            <div class="flabel">Category *</div>
+            <select class="fselect" id="f-cat">
+              <option value="">Select category…</option>
+              <option value="suits">Suits</option>
+              <option value="belts">Belts</option>
+              <option value="shoes">Shoes</option>
+            </select>
+          </div>
+          <div class="fgroup">
+            <div class="flabel">Price (₦)</div>
+            <input class="finput" id="f-price" placeholder="e.g. 45,000" type="text"/>
+          </div>
+          <div class="fgroup">
+            <div class="flabel">Description</div>
+            <textarea class="ftextarea" id="f-desc" placeholder="Brief product description…"></textarea>
+          </div>
+
+          <!-- Colours -->
+          <div class="fgroup">
+            <div class="flabel">Available Colours</div>
+            <div class="swatch-editor" id="swatches-list"></div>
+            <div class="add-swatch-row">
+              <input type="color" class="swatch-color-pick" id="sw-color" value="#111111"/>
+              <input class="finput swatch-name-in" id="sw-name" placeholder="Colour name (e.g. Black)"/>
+              <button onclick="addSwatch()" style="background:var(--blue);color:#fff;border:none;padding:8px 14px;cursor:pointer;border-radius:4px;font-size:0.65rem;font-family:var(--sans);white-space:nowrap">+ Add</button>
+            </div>
+          </div>
+
+          <!-- Sizes -->
+          <div class="fgroup">
+            <div class="flabel">Available Sizes</div>
+            <div class="sizes-grid" id="sizes-list"></div>
+            <div class="add-size-row">
+              <input class="finput size-add-in" id="sz-input" placeholder="e.g. 42 or M or 34"/>
+              <button onclick="addSize()" style="background:var(--blue);color:#fff;border:none;padding:8px 14px;cursor:pointer;border-radius:4px;font-size:0.65rem;font-family:var(--sans);white-space:nowrap">+ Add</button>
+            </div>
+          </div>
+
+          <!-- Toggles -->
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">🆕 New Arrival</div>
+              <div class="toggle-sub">Shows a "New Arrival" badge on the product card</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="t-new"/><div class="toggle-track"></div></label>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">🚫 Sold Out</div>
+              <div class="toggle-sub">Shows "Sold Out" badge and disables the enquiry button</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="t-sold"/><div class="toggle-track"></div></label>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">🌟 Best Seller</div>
+              <div class="toggle-sub">Shows a "Best Seller" badge on the card</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="t-best"/><div class="toggle-track"></div></label>
+          </div>
+          <div class="toggle-row" style="border-bottom:1px solid var(--silver-lt);padding-bottom:14px">
+            <div>
+              <div class="toggle-label">⭐ Exclusive</div>
+              <div class="toggle-sub">Shows an "Exclusive" badge on the card</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="t-excl"/><div class="toggle-track"></div></label>
+          </div>
+
+          <button class="submit-btn" onclick="saveProduct()" id="save-btn">➕ Add Product to Catalogue</button>
+          <div id="form-note" style="font-size:0.68rem;color:var(--silver);margin-top:12px;text-align:center;display:none"></div>
+        </div>
+      </div>
+
+      <!-- Product Catalogue Panel -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-head-title">Product Catalogue</div>
+        </div>
+        <div class="grid-toolbar">
+          <input class="search-in" type="text" placeholder="Search products…" id="grid-search" oninput="renderGrid()"/>
+          <button class="filter-btn active" data-cat="all" onclick="setFilter('all',this)">All</button>
+          <button class="filter-btn" data-cat="suits" onclick="setFilter('suits',this)">Suits</button>
+          <button class="filter-btn" data-cat="belts" onclick="setFilter('belts',this)">Belts</button>
+          <button class="filter-btn" data-cat="shoes" onclick="setFilter('shoes',this)">Shoes</button>
+        </div>
+        <div class="product-grid" id="product-grid"></div>
+      </div>
+    </div>
+
+    <!-- How to use notice -->
+    <div style="background:var(--blue-light);border:1px solid var(--blue-pale);border-radius:6px;padding:20px 24px;margin-top:24px">
+      <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--blue);margin-bottom:8px">📋 How this works</div>
+      <div style="font-size:0.75rem;color:var(--charcoal);line-height:1.9">
+        Products you add here are saved in your browser's local storage and also exported to a format you can copy into your <code style="background:var(--blue-pale);padding:1px 6px;border-radius:3px;font-size:0.7rem">index.html</code> shop section.
+        Use the <strong>"Export for Site"</strong> button below to get the HTML code for all products — paste it into your shop page to go live.
+        For full dynamic loading (no copy-paste needed), a Firebase integration upgrade is available.
+      </div>
+      <button onclick="exportHTML()" style="margin-top:14px;background:var(--blue);color:#fff;border:none;padding:10px 22px;font-family:var(--sans);font-size:0.62rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;border-radius:4px">⬇ Export HTML for Site</button>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PASS = 'luxevista2026';
+let products = [];
+let editingId = null;
+let swatches = [];
+let sizes = [];
+let filterCat = 'all';
+
+// ── Auth ──
+function doLogin() {
+  if (document.getElementById('pw-in').value === PASS) {
+    sessionStorage.setItem('lv_sm_auth','1');
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('shell').style.display='flex';
+    init();
+  } else {
+    document.getElementById('login-err').style.display='block';
+    document.getElementById('pw-in').value='';
+  }
+}
+function doLogout(){sessionStorage.removeItem('lv_sm_auth');location.reload()}
+
+// ── Init ──
+function init(){
+  loadProducts();
+  renderGrid();
+  renderStats();
+}
+
+// ── Storage ──
+function loadProducts(){
+  try{products=JSON.parse(localStorage.getItem('lv_stock')||'[]')}catch(e){products=[]}
+}
+function saveAll(){
+  try{localStorage.setItem('lv_stock',JSON.stringify(products))}catch(e){}
+}
+
+// ── Image handling ──
+function handleImage(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(file.size > 5*1024*1024){showToast('Image too large. Max 5MB.');return;}
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('img-preview').src = e.target.result;
+    document.getElementById('img-preview').style.display = 'block';
+    document.getElementById('f-image').value = e.target.result;
+    document.getElementById('upload-zone').style.opacity = '0.6';
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Swatches ──
+function addSwatch(){
+  const color = document.getElementById('sw-color').value;
+  const name = document.getElementById('sw-name').value.trim();
+  if(!name){showToast('Enter a colour name.');return;}
+  swatches.push({color,name});
+  document.getElementById('sw-name').value='';
+  renderSwatches();
+}
+function removeSwatch(i){swatches.splice(i,1);renderSwatches()}
+function renderSwatches(){
+  document.getElementById('swatches-list').innerHTML = swatches.map((s,i)=>`
+    <div class="swatch-item">
+      <div class="swatch-dot" style="background:${s.color}"></div>
+      <div class="swatch-name">${s.name}</div>
+      <div class="swatch-del" onclick="removeSwatch(${i})">✕</div>
+    </div>`).join('');
+}
+
+// ── Sizes ──
+function addSize(){
+  const v = document.getElementById('sz-input').value.trim();
+  if(!v){showToast('Enter a size value.');return;}
+  if(!sizes.includes(v)) sizes.push(v);
+  document.getElementById('sz-input').value='';
+  renderSizes();
+}
+function removeSize(i){sizes.splice(i,1);renderSizes()}
+function renderSizes(){
+  document.getElementById('sizes-list').innerHTML = sizes.map((s,i)=>`
+    <div class="size-tag">${s} <span onclick="removeSize(${i})">✕</span></div>`).join('');
+}
+
+// ── Save Product ──
+function saveProduct(){
+  const name = document.getElementById('f-name').value.trim();
+  const cat  = document.getElementById('f-cat').value;
+  const price= document.getElementById('f-price').value.trim();
+  const desc = document.getElementById('f-desc').value.trim();
+  const img  = document.getElementById('f-image').value;
+  const isNew  = document.getElementById('t-new').checked;
+  const isSold = document.getElementById('t-sold').checked;
+  const isBest = document.getElementById('t-best').checked;
+  const isExcl = document.getElementById('t-excl').checked;
+
+  if(!name||!cat){showToast('Product name and category are required.');return;}
+
+  const entry = {
+    id: editingId || Date.now(),
+    name, cat, price, desc, img,
+    swatches: [...swatches],
+    sizes: [...sizes],
+    isNew, isSold, isBest, isExcl,
+    addedAt: editingId ? products.find(p=>p.id===editingId)?.addedAt || new Date().toISOString() : new Date().toISOString()
+  };
+
+  if(editingId){
+    const idx = products.findIndex(p=>p.id===editingId);
+    products[idx] = entry;
+    showToast(`✅ "${name}" updated.`);
+  } else {
+    products.push(entry);
+    showToast(`✅ "${name}" added to catalogue.`);
+  }
+  saveAll();
+  resetForm();
+  renderGrid();
+  renderStats();
+}
+
+// ── Edit Product ──
+function editProduct(id){
+  const p = products.find(p=>p.id===id);
+  if(!p) return;
+  editingId = id;
+  document.getElementById('edit-id').value = id;
+  document.getElementById('f-name').value = p.name;
+  document.getElementById('f-cat').value = p.cat;
+  document.getElementById('f-price').value = p.price||'';
+  document.getElementById('f-desc').value = p.desc||'';
+  document.getElementById('t-new').checked = p.isNew;
+  document.getElementById('t-sold').checked = p.isSold;
+  document.getElementById('t-best').checked = p.isBest;
+  document.getElementById('t-excl').checked = p.isExcl;
+  swatches = [...(p.swatches||[])];
+  sizes = [...(p.sizes||[])];
+  renderSwatches();
+  renderSizes();
+  if(p.img){
+    document.getElementById('img-preview').src=p.img;
+    document.getElementById('img-preview').style.display='block';
+    document.getElementById('f-image').value=p.img;
+  }
+  document.getElementById('form-panel-title').textContent='Edit Product';
+  document.getElementById('save-btn').textContent='💾 Save Changes';
+  document.getElementById('cancel-edit-btn').style.display='';
+  document.querySelector('.panel').scrollIntoView({behavior:'smooth'});
+}
+
+function cancelEdit(){editingId=null;resetForm()}
+
+function resetForm(){
+  editingId=null;
+  ['f-name','f-price','f-desc','f-image'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-cat').value='';
+  document.getElementById('t-new').checked=false;
+  document.getElementById('t-sold').checked=false;
+  document.getElementById('t-best').checked=false;
+  document.getElementById('t-excl').checked=false;
+  swatches=[]; sizes=[];
+  renderSwatches(); renderSizes();
+  document.getElementById('img-preview').style.display='none';
+  document.getElementById('upload-zone').style.opacity='1';
+  document.getElementById('form-panel-title').textContent='Add New Product';
+  document.getElementById('save-btn').textContent='➕ Add Product to Catalogue';
+  document.getElementById('cancel-edit-btn').style.display='none';
+}
+
+// ── Toggle sold/new directly from card ──
+function toggleSold(id){
+  const p=products.find(p=>p.id===id);
+  if(!p) return;
+  p.isSold=!p.isSold;
+  saveAll();renderGrid();renderStats();
+  showToast(p.isSold?`🚫 "${p.name}" marked Sold Out`:`✅ "${p.name}" available again`);
+}
+function toggleNew(id){
+  const p=products.find(p=>p.id===id);
+  if(!p) return;
+  p.isNew=!p.isNew;
+  saveAll();renderGrid();renderStats();
+  showToast(p.isNew?`🆕 "${p.name}" marked New Arrival`:`Removed New Arrival badge`);
+}
+function deleteProduct(id){
+  const p=products.find(p=>p.id===id);
+  if(!p||!confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
+  products=products.filter(p=>p.id!==id);
+  saveAll();renderGrid();renderStats();
+  showToast('Product deleted.');
+}
+
+// ── Render Grid ──
+function setFilter(cat,btn){
+  filterCat=cat;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGrid();
+}
+
+function renderGrid(){
+  const q=(document.getElementById('grid-search').value||'').toLowerCase();
+  let list=products.filter(p=>{
+    const txt=(p.name+' '+p.cat+' '+p.desc).toLowerCase();
+    return (!q||txt.includes(q))&&(filterCat==='all'||p.cat===filterCat);
+  });
+  list=[...list].reverse();
+  const grid=document.getElementById('product-grid');
+  if(!list.length){
+    grid.innerHTML=`<div class="empty-grid" style="grid-column:1/-1"><div class="empty-icon">📦</div><div>No products here yet.</div></div>`;
+    return;
+  }
+  grid.innerHTML=list.map(p=>`
+    <div class="prod-card">
+      <div class="prod-card-img">
+        ${p.img?`<img src="${p.img}" alt="${p.name}" onerror="this.style.display='none'"/>`:'📦'}
+        ${p.isSold?'':''}</div>
+      <div class="prod-badges">
+        ${p.isNew?'<span class="badge-new">New Arrival</span>':''}
+        ${p.isSold?'<span class="badge-sold">Sold Out</span>':''}
+        ${p.isBest&&!p.isNew&&!p.isSold?'<span class="badge-new" style="background:#d97706">Best Seller</span>':''}
+        ${p.isExcl&&!p.isNew&&!p.isSold?'<span class="badge-new" style="background:#7c3aed">Exclusive</span>':''}
+      </div>
+      <div class="prod-card-body">
+        <div class="prod-card-cat">${p.cat}</div>
+        <div class="prod-card-name">${p.name}</div>
+        <div class="prod-card-price">${p.price?'₦'+p.price:'No price set'}</div>
+        <div class="prod-card-actions">
+          <button class="pca sold-toggle ${p.isSold?'is-sold':''}" onclick="toggleSold(${p.id})">${p.isSold?'✓ Sold Out':'Mark Sold'}</button>
+          <button class="pca new-toggle ${p.isNew?'is-new':''}" onclick="toggleNew(${p.id})">${p.isNew?'✓ New':'New Arrival'}</button>
+          <button class="pca" onclick="editProduct(${p.id})">✏ Edit</button>
+          <button class="pca del" onclick="deleteProduct(${p.id})">🗑</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Stats ──
+function renderStats(){
+  const total=products.length;
+  const nw=products.filter(p=>p.isNew).length;
+  const sold=products.filter(p=>p.isSold).length;
+  const avail=products.filter(p=>!p.isSold).length;
+  document.getElementById('st-total').textContent=total;
+  document.getElementById('st-new').textContent=nw;
+  document.getElementById('st-sold').textContent=sold;
+  document.getElementById('st-avail').textContent=avail;
+}
+
+// ── Export HTML ──
+function exportHTML(){
+  if(!products.length){showToast('No products to export.');return;}
+  const lines=products.map(p=>{
+    const badge = p.isSold ? 'Sold Out' : p.isNew ? 'New Arrival' : p.isBest ? 'Best Seller' : p.isExcl ? 'Exclusive' : '';
+    const btn = p.isSold
+      ? `<button class="enquire-btn" style="opacity:0.5;cursor:not-allowed" disabled>🚫 Sold Out</button>`
+      : `<button class="enquire-btn" onclick="enquire(this)">💬 Enquire via WhatsApp</button>`;
+    const swatchHtml = (p.swatches||[]).map(s=>`<button class="swatch active" style="background:${s.color}" data-color="${s.name}" title="${s.name}"></button>`).join('');
+    const sizeHtml = (p.sizes||[]).map(s=>`<button class="sbtn" data-sz="${s}">${s}</button>`).join('');
+    const availTag = p.isSold ? '' : `<span class="available-tag">✅ Available Now</span>`;
+    return `
+        <!-- ${p.name} -->
+        <div class="ccard reveal" data-cat="${p.cat}">
+          <div class="ccard-img-wrap">
+            ${p.img?`<img class="ccard-img" src="${p.img}" alt="${p.name}" loading="lazy"/>`:'<div style="height:280px;background:#f1f5fd;display:flex;align-items:center;justify-content:center;font-size:3rem">📦</div>'}
+            ${badge?`<span class="ccard-badge">${badge}</span>`:''}
+            ${p.isSold?'<div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center"><span style="background:#dc2626;color:#fff;font-size:0.7rem;font-weight:800;letter-spacing:0.2em;padding:10px 24px;border-radius:4px;text-transform:uppercase">SOLD OUT</span></div>':''}
+          </div>
+          <div class="ccard-body">
+            ${availTag}<span class="ccard-cat">${p.cat.charAt(0).toUpperCase()+p.cat.slice(1)}</span>
+            <h3 class="ccard-name">${p.name}</h3>
+            ${p.price?`<p style="font-size:0.85rem;font-weight:700;color:var(--blue);margin-bottom:6px">₦${p.price}</p>`:''}
+            ${p.desc?`<p class="ccard-desc">${p.desc}</p>`:''}
+            ${swatchHtml?`<div class="sel-group"><span class="sel-label">Colour: <span class="sel-val">${(p.swatches[0]||{}).name||''}</span></span><div class="swatches">${swatchHtml}</div></div>`:''}
+            ${sizeHtml?`<div class="sel-group"><span class="sel-label">Size</span><div class="size-row">${sizeHtml}</div></div>`:''}
+            ${btn}
+          </div>
+        </div>`;
+  });
+  const fullHTML = `<!-- ═══════════════════════
+   EXPORTED PRODUCTS — TheLuxeVista Stock Manager
+   Generated: ${new Date().toLocaleString('en-NG')}
+   Paste into the appropriate section inside index.html
+═══════════════════════ -->\n${lines.join('\n')}`;
+  const blob=new Blob([fullHTML],{type:'text/html'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`luxevista-products-${new Date().toISOString().slice(0,10)}.html`;
+  a.click();
+  showToast('✅ HTML exported! Open the file and copy the code into your index.html.');
+}
+
+// ── Toast ──
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+// ── Boot ──
+window.onload=function(){
+  if(sessionStorage.getItem('lv_sm_auth')==='1'){
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('shell').style.display='flex';
+    init();
+  }
+  document.getElementById('pw-in').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+};
+</script>
+</body>
+</html>
