@@ -1556,12 +1556,6 @@ function submitEmail(){
 
 // ── Contact form — In-Site Message (saves to admin panel + fires Gmail via EmailJS) ──
 const siteMessages = [];
-  <script type="text/javascript"
-  src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js">
-</script>
-<script>
-  emailjs.init("TLV");
-</script>
 function submitSite(){
   const fn=document.getElementById('f_fname').value.trim();
   const ph=document.getElementById('f_phone').value.trim();
