@@ -125,6 +125,8 @@ main{flex:1;padding:32px;max-width:1200px;margin:0 auto;width:100%}
 .pca.sold-toggle.is-sold:hover{background:var(--green);color:#fff}
 .pca.sold-toggle:not(.is-sold):hover{border-color:var(--red);color:var(--red)}
 .pca.del:hover{border-color:var(--red);color:var(--red)}
+.pca.del.confirm-armed{background:var(--red);border-color:var(--red);color:#fff;animation:pulse-del 1s infinite}
+@keyframes pulse-del{0%,100%{opacity:1}50%{opacity:0.7}}
 .pca.new-toggle.is-new{border-color:#0ea5e9;color:#0ea5e9}
 
 .empty-grid{padding:48px;text-align:center;color:var(--silver)}
@@ -353,6 +355,14 @@ let swatches = [];
 let sizes = [];
 let variantOptions = [];
 let filterCat = 'all';
+let pendingDeleteId = null;
+let pendingDeleteTimeout = null;
+
+// ── Surface silent failures instead of letting a click do nothing ──
+window.addEventListener('error', function(e){
+  console.error('Unexpected error:', e.error || e.message);
+  try{ showToast('⚠️ Something broke: ' + (e.message||'unexpected error') + ' — open the browser console (F12) for details.'); }catch(_){}
+});
 
 // ── Live sync status panel ──
 function setSyncStatus(ok, msg){
@@ -657,7 +667,20 @@ function toggleNew(id){
 }
 function deleteProduct(id){
   const p=products.find(p=>p.id===id);
-  if(!p||!confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
+  if(!p) return;
+
+  // First click arms it (button turns red + pulses); a second click within 4s actually deletes.
+  // This avoids relying on the native confirm() popup, which some in-app/mobile browsers block silently.
+  if(pendingDeleteId !== id){
+    pendingDeleteId = id;
+    clearTimeout(pendingDeleteTimeout);
+    pendingDeleteTimeout = setTimeout(()=>{ pendingDeleteId=null; renderGrid(); }, 4000);
+    renderGrid();
+    return;
+  }
+
+  clearTimeout(pendingDeleteTimeout);
+  pendingDeleteId = null;
   const name = p.name;
   products=products.filter(p=>p.id!==id);
   renderGrid();renderStats();
@@ -706,7 +729,7 @@ function renderGrid(){
           <button class="pca sold-toggle ${p.isSold?'is-sold':''}" onclick="toggleSold(${p.id})">${p.isSold?'✓ Sold Out':'Mark Sold'}</button>
           <button class="pca new-toggle ${p.isNew?'is-new':''}" onclick="toggleNew(${p.id})">${p.isNew?'✓ New':'New Arrival'}</button>
           <button class="pca" onclick="editProduct(${p.id})">✏ Edit</button>
-          <button class="pca del" onclick="deleteProduct(${p.id})">🗑</button>
+          <button class="pca del ${pendingDeleteId===p.id?'confirm-armed':''}" onclick="deleteProduct(${p.id})">${pendingDeleteId===p.id?'⚠️ Click to confirm':'🗑'}</button>
         </div>
       </div>
     </div>`).join('');
