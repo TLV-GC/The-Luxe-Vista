@@ -332,15 +332,13 @@ main{flex:1;padding:32px;max-width:1200px;margin:0 auto;width:100%}
       </div>
     </div>
 
-    <!-- How to use notice -->
-    <div style="background:var(--blue-light);border:1px solid var(--blue-pale);border-radius:6px;padding:20px 24px;margin-top:24px">
-      <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--blue);margin-bottom:8px">📋 How this works</div>
-      <div style="font-size:0.75rem;color:var(--charcoal);line-height:1.9">
-        Products you add here are saved in your browser's local storage and also exported to a format you can copy into your <code style="background:var(--blue-pale);padding:1px 6px;border-radius:3px;font-size:0.7rem">index.html</code> shop section.
-        Use the <strong>"Export for Site"</strong> button below to get the HTML code for all products — paste it into your shop page to go live.
-        For full dynamic loading (no copy-paste needed), a Firebase integration upgrade is available.
+    <!-- Live sync status -->
+    <div id="sync-panel" style="background:var(--off-white);border:1px solid var(--silver-lt);border-radius:6px;padding:20px 24px;margin-top:24px">
+      <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--silver);margin-bottom:8px" id="sync-title">⏳ Checking connection…</div>
+      <div style="font-size:0.75rem;color:var(--charcoal);line-height:1.9" id="sync-desc">
+        Add, edit, toggle, or delete a product here and it saves straight to Firebase — your live site (GitHub Pages and Vercel) picks it up automatically. Nothing to copy or paste.
       </div>
-      <button onclick="exportHTML()" style="margin-top:14px;background:var(--blue);color:#fff;border:none;padding:10px 22px;font-family:var(--sans);font-size:0.62rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;border-radius:4px">⬇ Export HTML for Site</button>
+      <button onclick="downloadBackup()" style="margin-top:14px;background:transparent;color:var(--silver);border:1.5px solid var(--silver-lt);padding:9px 20px;font-family:var(--sans);font-size:0.62rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;border-radius:4px">⬇ Download Backup (.json)</button>
     </div>
   </main>
 </div>
@@ -355,6 +353,27 @@ let swatches = [];
 let sizes = [];
 let variantOptions = [];
 let filterCat = 'all';
+
+// ── Live sync status panel ──
+function setSyncStatus(ok, msg){
+  const panel = document.getElementById('sync-panel');
+  const title = document.getElementById('sync-title');
+  const desc  = document.getElementById('sync-desc');
+  if(!panel||!title||!desc) return;
+  if(ok){
+    panel.style.background = 'var(--green-lt)';
+    panel.style.borderColor = '#bbf7d0';
+    title.style.color = 'var(--green)';
+    title.textContent = '🟢 Live-synced to your site';
+    desc.textContent = 'Add, edit, toggle, or delete a product here and it saves straight to Firebase — your live site (GitHub Pages and Vercel) picks it up automatically. Nothing to copy or paste.';
+  } else {
+    panel.style.background = 'var(--red-lt)';
+    panel.style.borderColor = '#fecaca';
+    title.style.color = 'var(--red)';
+    title.textContent = '🔴 Not syncing to your live site';
+    desc.textContent = msg || 'Changes here are only saved to this browser right now.';
+  }
+}
 
 // ── Auth ──
 function doLogin() {
@@ -375,6 +394,7 @@ function init(){
   showToast('Loading products...','info');
   if (!db) {
     // Firebase didn't load — use localStorage only
+    setSyncStatus(false, 'Firebase did not load in this browser, so changes are only being saved here — they will not reach your live site.');
     loadProductsLocal();
     renderGrid();
     renderStats();
@@ -391,15 +411,19 @@ function init(){
         products = defaultProducts();
         saveAll();
       }
+      setSyncStatus(true);
       renderGrid();
       renderStats();
     }, function(err){
-      // Firebase not configured yet — fall back to localStorage
+      // Firebase reachable but blocked (usually Database Rules) — fall back to localStorage
+      var code = (err && err.code) ? err.code : 'connection blocked';
+      setSyncStatus(false, 'Could not read from Firebase (' + code + '). Changes here will only save to this browser until this is fixed — check your Realtime Database Rules in the Firebase console.');
       loadProductsLocal();
       renderGrid();
       renderStats();
     });
   } catch(e) {
+    setSyncStatus(false, 'Firebase threw an error on load, so changes are only being saved to this browser.');
     loadProductsLocal();
     renderGrid();
     renderStats();
@@ -421,24 +445,31 @@ function loadProductsLocal(){
     }
   }catch(e){products=defaultProducts();}
 }
-function saveAll(){
+function saveAll(onDone){
   // Build Firebase-friendly object keyed by product id
   var firebaseData = {};
   products.forEach(function(p){ firebaseData[p.id] = p; });
+  // Always keep localStorage as an offline backup
+  try{ localStorage.setItem('lv_stock', JSON.stringify(products)); }catch(e){}
   // Push to Firebase — main site listens and updates instantly
   if (db) {
     try {
-      db.ref('products').set(firebaseData).catch(function(){
-        try{ localStorage.setItem('lv_stock', JSON.stringify(products)); }catch(e){}
+      db.ref('products').set(firebaseData).then(function(){
+        setSyncStatus(true);
+        if(onDone) onDone(true);
+      }).catch(function(err){
+        var code = (err && err.code) ? err.code : 'write blocked';
+        setSyncStatus(false, 'Your last change only saved to this browser — it did NOT reach the live site (' + code + '). This almost always means your Firebase Realtime Database Rules need to allow writes.');
+        if(onDone) onDone(false);
       });
     } catch(e) {
-      try{ localStorage.setItem('lv_stock', JSON.stringify(products)); }catch(e2){}
+      setSyncStatus(false, 'Your last change only saved to this browser — Firebase threw an error while saving.');
+      if(onDone) onDone(false);
     }
   } else {
-    try{ localStorage.setItem('lv_stock', JSON.stringify(products)); }catch(e){}
+    setSyncStatus(false, 'Firebase is not connected, so this only saved to your browser.');
+    if(onDone) onDone(false);
   }
-  // Also keep localStorage as offline backup
-  try{ localStorage.setItem('lv_stock', JSON.stringify(products)); }catch(e){}
 }
 
 // ── Image handling ──
@@ -529,15 +560,18 @@ function saveProduct(){
     addedAt: editingId ? products.find(p=>p.id===editingId)?.addedAt || new Date().toISOString() : new Date().toISOString()
   };
 
-  if(editingId){
+  const isEdit = !!editingId;
+  if(isEdit){
     const idx = products.findIndex(p=>p.id===editingId);
     products[idx] = entry;
-    showToast(`✅ "${name}" updated.`);
   } else {
     products.push(entry);
-    showToast(`✅ "${name}" added to catalogue.`);
   }
-  saveAll();
+  saveAll(function(ok){
+    showToast(ok
+      ? `✅ "${name}" ${isEdit?'updated':'added'} — live on your site now.`
+      : `⚠️ "${name}" saved on this device only — it did not reach your live site.`);
+  });
   resetForm();
   renderGrid();
   renderStats();
@@ -601,22 +635,35 @@ function toggleSold(id){
   const p=products.find(p=>p.id===id);
   if(!p) return;
   p.isSold=!p.isSold;
-  saveAll();renderGrid();renderStats();
-  showToast(p.isSold?`🚫 "${p.name}" marked Sold Out`:`✅ "${p.name}" available again`);
+  const nowSold = p.isSold, name = p.name;
+  renderGrid();renderStats();
+  saveAll(function(ok){
+    showToast(ok
+      ? (nowSold?`🚫 "${name}" marked Sold Out — live now.`:`✅ "${name}" available again — live now.`)
+      : `⚠️ Change saved on this device only — check your live site sync.`);
+  });
 }
 function toggleNew(id){
   const p=products.find(p=>p.id===id);
   if(!p) return;
   p.isNew=!p.isNew;
-  saveAll();renderGrid();renderStats();
-  showToast(p.isNew?`🆕 "${p.name}" marked New Arrival`:`Removed New Arrival badge`);
+  const nowNew = p.isNew, name = p.name;
+  renderGrid();renderStats();
+  saveAll(function(ok){
+    showToast(ok
+      ? (nowNew?`🆕 "${name}" marked New Arrival — live now.`:`Removed New Arrival badge — live now.`)
+      : `⚠️ Change saved on this device only — check your live site sync.`);
+  });
 }
 function deleteProduct(id){
   const p=products.find(p=>p.id===id);
   if(!p||!confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
+  const name = p.name;
   products=products.filter(p=>p.id!==id);
-  saveAll();renderGrid();renderStats();
-  showToast('Product deleted.');
+  renderGrid();renderStats();
+  saveAll(function(ok){
+    showToast(ok ? `🗑 "${name}" deleted — removed from your live site.` : `⚠️ Deleted here, but the live site may not have updated — check sync.`);
+  });
 }
 
 // ── Render Grid ──
@@ -677,47 +724,15 @@ function renderStats(){
   document.getElementById('st-avail').textContent=avail;
 }
 
-// ── Export HTML ──
-function exportHTML(){
-  if(!products.length){showToast('No products to export.');return;}
-  const lines=products.map(p=>{
-    const badge = p.isSold ? 'Sold Out' : p.isNew ? 'New Arrival' : p.isBest ? 'Best Seller' : p.isExcl ? 'Exclusive' : '';
-    const btn = p.isSold
-      ? `<button class="enquire-btn" style="opacity:0.5;cursor:not-allowed" disabled>🚫 Sold Out</button>`
-      : `<button class="enquire-btn" onclick="enquire(this)">💬 Enquire via WhatsApp</button>`;
-    const swatchHtml = (p.swatches||[]).map(s=>`<button class="swatch active" style="background:${s.color}" data-color="${s.name}" title="${s.name}"></button>`).join('');
-    const sizeHtml = (p.sizes||[]).map(s=>`<button class="sbtn" data-sz="${s}">${s}</button>`).join('');
-    const availTag = p.isSold ? '' : `<span class="available-tag">✅ Available Now</span>`;
-    return `
-        <!-- ${p.name} -->
-        <div class="ccard reveal" data-cat="${p.cat}">
-          <div class="ccard-img-wrap">
-            ${p.img?`<img class="ccard-img" src="${p.img}" alt="${p.name}" loading="lazy"/>`:'<div style="height:280px;background:#f1f5fd;display:flex;align-items:center;justify-content:center;font-size:3rem">📦</div>'}
-            ${badge?`<span class="ccard-badge">${badge}</span>`:''}
-            ${p.isSold?'<div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center"><span style="background:#dc2626;color:#fff;font-size:0.7rem;font-weight:800;letter-spacing:0.2em;padding:10px 24px;border-radius:4px;text-transform:uppercase">SOLD OUT</span></div>':''}
-          </div>
-          <div class="ccard-body">
-            ${availTag}<span class="ccard-cat">${p.cat.charAt(0).toUpperCase()+p.cat.slice(1)}</span>
-            <h3 class="ccard-name">${p.name}</h3>
-            ${p.price?`<p style="font-size:0.85rem;font-weight:700;color:var(--blue);margin-bottom:6px">₦${p.price}</p>`:''}
-            ${p.desc?`<p class="ccard-desc">${p.desc}</p>`:''}
-            ${swatchHtml?`<div class="sel-group"><span class="sel-label">Colour: <span class="sel-val">${(p.swatches[0]||{}).name||''}</span></span><div class="swatches">${swatchHtml}</div></div>`:''}
-            ${sizeHtml?`<div class="sel-group"><span class="sel-label">Size</span><div class="size-row">${sizeHtml}</div></div>`:''}
-            ${btn}
-          </div>
-        </div>`;
-  });
-  const fullHTML = `<!-- ═══════════════════════
-   EXPORTED PRODUCTS — TheLuxeVista Stock Manager
-   Generated: ${new Date().toLocaleString('en-NG')}
-   Paste into the appropriate section inside index.html
-═══════════════════════ -->\n${lines.join('\n')}`;
-  const blob=new Blob([fullHTML],{type:'text/html'});
+// ── Backup (safety net only — the live site reads straight from Firebase, not this file) ──
+function downloadBackup(){
+  if(!products.length){showToast('No products to back up yet.');return;}
+  const blob=new Blob([JSON.stringify(products,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download=`luxevista-products-${new Date().toISOString().slice(0,10)}.html`;
+  a.download=`luxevista-products-backup-${new Date().toISOString().slice(0,10)}.json`;
   a.click();
-  showToast('✅ HTML exported! Open the file and copy the code into your index.html.');
+  showToast('⬇ Backup downloaded — this is just a safety copy, your site already updated itself.');
 }
 
 // ── Toast ──
